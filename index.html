@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Private Cloud Calculator</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #eef3f8;
+    --panel: #ffffff;
+    --ink: #18212f;
+    --muted: #667085;
+    --line: #d7dee8;
+    --primary: #146b5d;
+    --primary-dark: #0f5147;
+    --accent: #f5a524;
+    --danger: #b42318;
+    --success: #087443;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+
+  .calc {
+    width: min(100%, 360px);
+    background: var(--panel);
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 18px 45px rgba(24, 33, 47, 0.14);
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #f8fafc;
+    white-space: nowrap;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .dot.online {
+    background: var(--success);
+  }
+
+  h2 {
+    margin: 0 0 18px;
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  label {
+    display: block;
+    margin: 14px 0 6px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  input, select {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 16px;
+  }
+
+  input:focus, select:focus {
+    outline: 3px solid rgba(20, 107, 93, 0.2);
+    border-color: var(--primary);
+  }
+
+  button {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 18px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary);
+    color: white;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: var(--primary-dark);
+  }
+
+  #result {
+    min-height: 58px;
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #f8fafc;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  #result.error {
+    color: var(--danger);
+  }
+
+  .history {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .history-title {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  #historyList {
+    display: grid;
+    gap: 6px;
+    min-height: 30px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  #historyList li {
+    overflow-wrap: anywhere;
+  }
+</style>
+</head>
+<body>
+  <div class="calc">
+    <div class="status-row">
+      <span class="badge"><span class="dot" id="statusDot"></span><span id="statusText">Checking node</span></span>
+      <span>LAN service</span>
+    </div>
+    <h2>Private Cloud Calculator</h2>
+
+    <label for="a">First number</label>
+    <input type="number" id="a" placeholder="First number">
+
+    <label for="op">Operation</label>
+    <select id="op">
+      <option value="add">+</option>
+      <option value="sub">-</option>
+      <option value="mul">×</option>
+      <option value="div">÷</option>
+    </select>
+
+    <label for="b">Second number</label>
+    <input type="number" id="b" placeholder="Second number">
+
+    <button onclick="calculate()">Calculate</button>
+    <div id="result">Ready</div>
+
+    <div class="history">
+      <p class="history-title">Recent calculations</p>
+      <ul id="historyList">
+        <li>No calculations yet</li>
+      </ul>
+    </div>
+  </div>
+
+<script>
+const operations = {
+  add: '+',
+  sub: '-',
+  mul: '×',
+  div: '÷'
+};
+
+const historyItems = [];
+
+function formatNumber(value) {
+  return Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 8
+  });
+}
+
+function setResult(message, isError = false) {
+  const resultDiv = document.getElementById('result');
+  resultDiv.textContent = message;
+  resultDiv.classList.toggle('error', isError);
+}
+
+function renderHistory() {
+  const historyList = document.getElementById('historyList');
+  historyList.innerHTML = '';
+
+  if (historyItems.length === 0) {
+    const emptyItem = document.createElement('li');
+    emptyItem.textContent = 'No calculations yet';
+    historyList.appendChild(emptyItem);
+    return;
+  }
+
+  historyItems.slice(0, 4).forEach(item => {
+    const listItem = document.createElement('li');
+    listItem.textContent = item;
+    historyList.appendChild(listItem);
+  });
+}
+
+async function checkHealth() {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+
+  try {
+    const res = await fetch('/health');
+    if (!res.ok) throw new Error('offline');
+    dot.classList.add('online');
+    text.textContent = 'Node online';
+  } catch (err) {
+    dot.classList.remove('online');
+    text.textContent = 'Node offline';
+  }
+}
+
+async function calculate() {
+  const a = document.getElementById('a').value;
+  const b = document.getElementById('b').value;
+  const op = document.getElementById('op').value;
+
+  if (a === '' || b === '') {
+    setResult('Enter both numbers', true);
+    return;
+  }
+
+  try {
+    const res = await fetch('/calculate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({a, b, op})
+    });
+    const data = await res.json();
+    if (data.error) {
+      setResult(data.error, true);
+    } else {
+      const answer = formatNumber(data.result);
+      setResult('Result: ' + answer);
+      historyItems.unshift(`${a} ${operations[op]} ${b} = ${answer}`);
+      renderHistory();
+    }
+  } catch (err) {
+    setResult('Request failed', true);
+  }
+}
+
+checkHealth();
+renderHistory();
+</script>
+</body>
+</html>
