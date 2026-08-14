@@ -1,6 +1,12 @@
-from flask import Flask, jsonify, render_template, request
+import os
+from flask import Flask, render_template, request, jsonify
 
-app = Flask(__name__, template_folder=".")
+app = Flask(__name__)
+
+# Docker sets HOSTNAME to the container ID automatically.
+# We use this to show which backend instance served each request,
+# so the load-balancing effect is visible during the demo.
+INSTANCE_ID = os.environ.get("HOSTNAME", "unknown")
 
 
 def calculate(a, b, op):
@@ -20,23 +26,18 @@ def calculate(a, b, op):
 
 @app.route("/")
 def home():
-    return render_template("index.html")
-
-
-@app.route("/health")
-def health():
-    return jsonify({"service": "private-cloud-calculator", "status": "online"})
+    return render_template("index.html", instance_id=INSTANCE_ID)
 
 
 @app.route("/calculate", methods=["POST"])
 def do_calculate():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json()
     try:
-        a = float(data["a"])
-        b = float(data["b"])
+        a = float(data.get("a"))
+        b = float(data.get("b"))
         op = data.get("op")
         result = calculate(a, b, op)
-        return jsonify({"result": result})
+        return jsonify({"result": result, "served_by": INSTANCE_ID})
     except ZeroDivisionError as e:
         return jsonify({"error": str(e)}), 400
     except (ValueError, TypeError):

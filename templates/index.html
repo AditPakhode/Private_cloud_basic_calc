@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Private Cloud Calculator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #1e1e2f;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+  }
+  .calc {
+    background: #2a2a3d;
+    padding: 24px;
+    border-radius: 12px;
+    width: 280px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  }
+  h2 {
+    text-align: center;
+    margin-top: 0;
+    font-size: 18px;
+    color: #9ad0f5;
+  }
+  input, select {
+    width: 100%;
+    padding: 10px;
+    margin: 6px 0;
+    border-radius: 6px;
+    border: none;
+    box-sizing: border-box;
+    font-size: 16px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 6px;
+    background: #4f8cff;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  button:hover { background: #3a6fd6; }
+  #result {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 20px;
+    min-height: 28px;
+  }
+</style>
+</head>
+<body>
+  <div class="calc">
+    <h2>Private Cloud Calculator</h2>
+    <div style="font-size:11px; color:#888; text-align:center; margin-bottom:8px;">
+      Page served by: {{ instance_id }}
+    </div>
+    <input type="number" id="a" placeholder="First number">
+    <select id="op">
+      <option value="add">+</option>
+      <option value="sub">-</option>
+      <option value="mul">×</option>
+      <option value="div">÷</option>
+    </select>
+    <input type="number" id="b" placeholder="Second number">
+    <button onclick="calculate()">Calculate</button>
+    <div id="result"></div>
+  </div>
+
+<script>
+async function calculate() {
+  const a = document.getElementById('a').value;
+  const b = document.getElementById('b').value;
+  const op = document.getElementById('op').value;
+  const resultDiv = document.getElementById('result');
+
+  if (a === '' || b === '') {
+    resultDiv.textContent = 'Enter both numbers';
+    return;
+  }
+
+  try {
+    const res = await fetch('/calculate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({a, b, op})
+    });
+    const data = await res.json();
+    if (data.error) {
+      resultDiv.textContent = 'Error: ' + data.error;
+    } else {
+      resultDiv.textContent = 'Result: ' + data.result + ' (served by ' + data.served_by + ')';
+    }
+  } catch (err) {
+    resultDiv.textContent = 'Request failed';
+  }
+}
+</script>
+</body>
+</html>
